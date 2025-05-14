@@ -1,0 +1,52 @@
+## Here's What It Means by Service Type:
+
+| Service Type   | EXTERNAL-IP Value                | Explanation                                                           |
+| -------------- | -------------------------------- | --------------------------------------------------------------------- |
+| `ClusterIP`    | `<none>`                         | Internal only — no external IP                                        |
+| `NodePort`     | `<none>`                         | You use your **node's IP** + port (e.g. `http://192.168.1.100:32123`) |
+| `LoadBalancer` | **External cloud IP**            | A public IP provisioned by your cloud provider (e.g. AWS ELB)         |
+| `ExternalName` | A DNS name (e.g., `example.com`) | Maps service to external DNS                                          |
+
+
+
+kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.7/config/manifests/metallb-native.yaml
+
+
+cat <<EOF | kubectl apply -f -
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: default-address-pool
+  namespace: metallb-system
+spec:
+  addresses:
+  - 192.168.1.240-192.168.1.250
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: l2-advertisement
+  namespace: metallb-system
+EOF
+
+
+kubectl patch svc prometheus-kube-prometheus-prometheus -n monitoring \
+  -p '{"spec": {"type": "LoadBalancer"}}'
+
+kubectl patch svc prometheus-grafana -n monitoring \
+  -p '{"spec": {"type": "LoadBalancer"}}'
+
+kubectl patch svc prometheus-kube-prometheus-alertmanager -n monitoring \
+  -p '{"spec": {"type": "LoadBalancer"}}'
+
+kubectl get svc -n monitoring
+
+You’ll now see EXTERNAL-IP assigned. Open them in your browser:
+
+    Prometheus → http://<EXTERNAL-IP>:9090
+
+    Grafana → http://<EXTERNAL-IP>:3000 (Default user: admin, password: prom-operator or check secret)
+
+    Alertmanager → http://<EXTERNAL-IP>:9093
+
+    kubectl logs -n metallb-system deploy/controller

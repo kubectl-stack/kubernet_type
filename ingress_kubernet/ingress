@@ -1,0 +1,61 @@
+What is an Ingress?
+Ingress is a Kubernetes object that manages external access to services in a cluster, typically HTTP/HTTPS traffic.
+Instead of exposing each service with a separate LoadBalancer or NodePort, you can use Ingress to expose multiple services using a single external IP.
+
+
+
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm install ingress-nginx ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace
+
+
+# grafana-ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: grafana.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: grafana
+            port:
+              number: 80
+
+kubectl apply -f grafana-ingress.yaml
+
+sudo echo "192.168.1.X grafana.local" >> /etc/hosts
+
+# prometheus-ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: prometheus-ingress
+  namespace: monitoring
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: prometheus.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: prometheus-kube-prometheus-prometheus
+            port:
+              number: 9090
+EOF
+
+kubectl apply -f prometheus-ingress.yaml
+
+kubectl get ingress -n blackbox
